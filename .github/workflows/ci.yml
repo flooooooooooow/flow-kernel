@@ -124,10 +124,12 @@ jobs:
           cp /tmp/flow-hello-build/flow-hello /tmp/flow-overlay/opt/flow-hello
           cp diagnostics/init.sh /tmp/flow-overlay/opt/flow-diag-init
           cp diagnostics/reboot_init.sh /tmp/flow-overlay/opt/flow-reboot-init
+          cp diagnostics/poweroff_init.sh /tmp/flow-overlay/opt/flow-poweroff-init
           chmod 0755 \
             /tmp/flow-overlay/opt/flow-hello \
             /tmp/flow-overlay/opt/flow-diag-init \
-            /tmp/flow-overlay/opt/flow-reboot-init
+            /tmp/flow-overlay/opt/flow-reboot-init \
+            /tmp/flow-overlay/opt/flow-poweroff-init
 
           gzip -dc /tmp/tinycore/corepure64.gz > /tmp/flow-corepure64.cpio
           (
@@ -165,17 +167,12 @@ jobs:
             --report /tmp/boot-health.json
           cp /tmp/boot-health.json /tmp/boot-health-baseline-candidate.json
 
-      - name: Compare health with committed baseline when available
+      - name: Compare health with committed baseline
         run: |
-          if [[ -f diagnostics/baseline-health.json ]]; then
-            python3 diagnostics/compare_health.py \
-              /tmp/boot-health.json \
-              diagnostics/baseline-health.json \
-              --report /tmp/boot-health-regression.json
-          else
-            printf '%s\n' '{"schema":1,"baseline":"not-yet-promoted","ok":true}' \
-              > /tmp/boot-health-regression.json
-          fi
+          python3 diagnostics/compare_health.py \
+            /tmp/boot-health.json \
+            diagnostics/baseline-health.json \
+            --report /tmp/boot-health-regression.json
 
       - name: Verify reboot lifecycle path
         run: |
@@ -202,6 +199,34 @@ jobs:
           fi
           if [[ "$rc" -ne 0 ]]; then
             echo "reboot lifecycle QEMU exited with unexpected status $rc" >&2
+            exit "$rc"
+          fi
+
+      - name: Verify poweroff lifecycle path
+        run: |
+          set +e
+          timeout 20s qemu-system-x86_64 \
+            -machine accel=tcg \
+            -cpu max \
+            -m 256M \
+            -kernel /tmp/tinycore/vmlinuz64 \
+            -initrd /tmp/flow-corepure64.gz \
+            -append 'console=ttyS0 rdinit=/opt/flow-poweroff-init' \
+            -serial file:/tmp/flow-poweroff-serial.log \
+            -display none \
+            -no-reboot
+          rc=$?
+          set -e
+
+          cat /tmp/flow-poweroff-serial.log
+          grep -F 'FLOW_LIFECYCLE POWEROFF_START' /tmp/flow-poweroff-serial.log
+          grep -F 'FLOW_LIFECYCLE POWEROFF_REQUESTED' /tmp/flow-poweroff-serial.log
+          if grep -Fq 'FLOW_LIFECYCLE POWEROFF_FAILED' /tmp/flow-poweroff-serial.log; then
+            echo 'guest poweroff syscall returned unexpectedly' >&2
+            exit 1
+          fi
+          if [[ "$rc" -ne 0 ]]; then
+            echo "poweroff lifecycle QEMU exited with unexpected status $rc" >&2
             exit "$rc"
           fi
 
@@ -247,6 +272,7 @@ jobs:
             /tmp/tinycore-serial.log
             /tmp/flow-diagnostics-serial.log
             /tmp/flow-reboot-serial.log
+            /tmp/flow-poweroff-serial.log
             /tmp/boot-health.json
             /tmp/boot-health-baseline-candidate.json
             /tmp/boot-health-regression.json
