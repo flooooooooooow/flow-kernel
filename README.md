@@ -1,5 +1,8 @@
 # Flow Kernel
 
+[![Kernel CI](https://github.com/flooooooooooow/flow-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/flooooooooooow/flow-kernel/actions/workflows/ci.yml)
+[![GitHub Pages](https://github.com/flooooooooooow/flow-kernel/actions/workflows/pages.yml/badge.svg)](https://github.com/flooooooooooow/flow-kernel/actions/workflows/pages.yml)
+
 Flow systems integration on top of a deliberately tiny Linux base.
 
 `flow-kernel` no longer implements its own bootloader, page tables, scheduler, interrupt subsystem, or virtual-memory manager. Those are Linux responsibilities. The base target is Tiny Core Linux CorePure64: a minimal command-line Linux system that gives Flow a mature x86_64 kernel, drivers, networking, processes, namespaces, cgroups, perf and the native Linux eBPF surface without dragging in a conventional desktop distribution.
@@ -20,7 +23,7 @@ Tiny Core is the substrate, not a fork. We consume its `vmlinuz64` and `corepure
 
 ## Fetch the Tiny Core base
 
-The default tracks the CorePure64 `17.x` release line. Override `TC_MAJOR` when intentionally moving to another Tiny Core line.
+The default tracks Tiny Core CorePure64 17.0 with Linux `6.18.2-tinycore64`. The fetch script verifies Tiny Core's published MD5 sidecars and records a manifest containing the exact version and checksums used.
 
 ```bash
 bash tinycore/fetch.sh
