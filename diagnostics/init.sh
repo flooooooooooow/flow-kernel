@@ -15,6 +15,11 @@ mark ()
     printf 'FLOW_DIAG %s %s %s t_ms=%s\n' "$1" "$2" "$3" "$(now_ms)"
 }
 
+evidence ()
+{
+    printf 'FLOW_EVIDENCE %s=%s\n' "$1" "$2"
+}
+
 fail ()
 {
     printf 'FLOW_DIAG FAIL %s t_ms=%s\n' "$1" "$(now_ms)" >&2
@@ -32,6 +37,7 @@ mark 010 PID1_START OK
 mkdir -p /proc /sys /dev /tmp /run /sys/fs/cgroup
 mount -t proc proc /proc || fail "cannot mount procfs"
 [ -r /proc/1/status ] || fail "PID 1 missing from procfs"
+evidence kernel_release "$(cat /proc/sys/kernel/osrelease)"
 mark 020 PROCFS OK
 
 mount -t sysfs sysfs /sys || fail "cannot mount sysfs"
@@ -49,22 +55,29 @@ grep -q '^flow-kernel-diagnostic$' /tmp/flow-write-test || fail "write test mism
 mark 050 WRITE_TEST OK
 
 [ -r /proc/cpuinfo ] || fail "cpuinfo unavailable"
-grep -q '^processor' /proc/cpuinfo || fail "no CPU reported"
+cpu_count="$(grep -c '^processor' /proc/cpuinfo || true)"
+[ "$cpu_count" -gt 0 ] || fail "no CPU reported"
+evidence cpu_count "$cpu_count"
 mark 060 CPU OK
 
 [ -r /proc/meminfo ] || fail "meminfo unavailable"
-awk '/^MemTotal:/ { if ($2 > 0) ok=1 } END { exit ok ? 0 : 1 }' /proc/meminfo || fail "invalid MemTotal"
+mem_kb="$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)"
+[ "${mem_kb:-0}" -gt 0 ] || fail "invalid MemTotal"
+evidence mem_total_kb "$mem_kb"
 mark 070 MEMORY OK
 
 before="$(cut -d. -f1 /proc/uptime)"
 sleep 1
 after="$(cut -d. -f1 /proc/uptime)"
 [ "$after" -gt "$before" ] || fail "monotonic clock did not advance"
+evidence uptime_seconds "$after"
 mark 080 CLOCK_TIMER OK
 
 rm -f /tmp/flow-rng
 dd if=/dev/urandom of=/tmp/flow-rng bs=16 count=1 2>/dev/null || fail "cannot read urandom"
 [ "$(wc -c </tmp/flow-rng)" -eq 16 ] || fail "urandom returned wrong byte count"
+entropy="$(cat /proc/sys/kernel/random/entropy_avail 2>/dev/null || echo unknown)"
+evidence entropy_available "$entropy"
 mark 090 RNG OK
 
 ( exit 0 ) &
@@ -94,21 +107,27 @@ ln /tmp/flow-fs/b /tmp/flow-fs/c || fail "hard link failed"
 cmp /tmp/flow-fs/b /tmp/flow-fs/c || fail "linked file mismatch"
 mark 130 FILESYSTEM OK
 
-if [ -d /sys/class/block ] && [ -n "$(ls -A /sys/class/block 2>/dev/null)" ]; then
+block_devices="$(ls /sys/class/block 2>/dev/null | tr '\n' ',' | sed 's/,$//' || true)"
+if [ -n "$block_devices" ]; then
+    evidence block_devices "$block_devices"
     mark 140 BLOCK OK
 else
     advisory 140 BLOCK
 fi
 
 if [ -d /sys/class/net/lo ] && [ -r /proc/net/dev ]; then
+    net_interfaces="$(ls /sys/class/net 2>/dev/null | tr '\n' ',' | sed 's/,$//')"
+    evidence net_interfaces "$net_interfaces"
     mark 150 NETWORK OK
 else
     fail "loopback/network stack missing"
 fi
 
 if [ -r /etc/resolv.conf ] && grep -q '^[[:space:]]*nameserver[[:space:]]' /etc/resolv.conf; then
+    evidence dns_configured true
     mark 160 DNS OK
 else
+    evidence dns_configured false
     advisory 160 DNS
 fi
 
@@ -118,16 +137,21 @@ fi
 mark 170 NAMESPACES OK
 
 if grep -qE '(^|[[:space:]])cgroup2?($|[[:space:]])' /proc/filesystems 2>/dev/null; then
+    evidence cgroup_capable true
     mark 180 CGROUP OK
 else
+    evidence cgroup_capable false
     advisory 180 CGROUP
 fi
 
 if grep -qE '(^|[[:space:]])bpf($|[[:space:]])' /proc/filesystems 2>/dev/null; then
+    evidence bpf_capable true
     mark 190 BPF OK
 elif [ -e /proc/sys/kernel/unprivileged_bpf_disabled ]; then
+    evidence bpf_capable true
     mark 190 BPF OK
 else
+    evidence bpf_capable false
     fail "BPF capability evidence missing"
 fi
 
