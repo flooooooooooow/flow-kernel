@@ -21,6 +21,10 @@ Flow eBPF, XDP, tracing and driver experiments
 
 Tiny Core is the substrate, not a fork. We consume its `vmlinuz64` and `corepure64.gz` release artifacts directly.
 
+## Repository boundary
+
+`flooooooooooow/flow` owns language syntax, parser/type-system behaviour, generic compiler infrastructure and reusable target/backend machinery. `flow-kernel` owns Linux-specific ABI bindings, kernel-facing Flow libraries, eBPF program APIs and examples, loaders/control-plane code, Tiny Core packaging, kernel integration tests and systems benchmarks. Changes needed in the Flow compiler should be implemented upstream rather than copied into this repository.
+
 ## Fetch the Tiny Core base
 
 The default tracks Tiny Core CorePure64 17.0 with Linux `6.18.2-tinycore64`. The fetch script verifies Tiny Core's published MD5 sidecars and records a manifest containing the exact version and checksums used.
