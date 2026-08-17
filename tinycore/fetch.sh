@@ -5,6 +5,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TC_MAJOR="${TC_MAJOR:-17.x}"
 TC_VERSION="${TC_VERSION:-17.0}"
 TC_KERNEL="${TC_KERNEL:-6.18.2-tinycore64}"
+TC_CONNECT_TIMEOUT="${TC_CONNECT_TIMEOUT:-15}"
+TC_FETCH_TIMEOUT="${TC_FETCH_TIMEOUT:-120}"
 OUT="${1:-$ROOT/build/tinycore}"
 BASE_URL="https://www.tinycorelinux.net/${TC_MAJOR}/x86_64/release/distribution_files"
 
@@ -22,9 +24,17 @@ fetch()
     fi
 
     printf 'Fetching %s\n' "$url"
-    if ! curl --fail --location --retry 3 --retry-all-errors --output "$dst.part" "$url"; then
+    if ! curl \
+        --fail \
+        --location \
+        --retry 3 \
+        --retry-all-errors \
+        --connect-timeout "$TC_CONNECT_TIMEOUT" \
+        --max-time "$TC_FETCH_TIMEOUT" \
+        --output "$dst.part" \
+        "$url"; then
         rm -f "$dst.part"
-        printf 'Tiny Core artifact unavailable: %s\n' "$url" >&2
+        printf 'Tiny Core artifact unavailable or timed out after %ss: %s\n' "$TC_FETCH_TIMEOUT" "$url" >&2
         exit 1
     fi
     mv "$dst.part" "$dst"
@@ -54,6 +64,8 @@ gzip -t "$OUT/corepure64.gz"
     printf 'tinycore_version=%s\n' "$TC_VERSION"
     printf 'kernel_version=%s\n' "$TC_KERNEL"
     printf 'source=%s\n' "$BASE_URL"
+    printf 'connect_timeout_seconds=%s\n' "$TC_CONNECT_TIMEOUT"
+    printf 'fetch_timeout_seconds=%s\n' "$TC_FETCH_TIMEOUT"
     printf 'vmlinuz64_md5=%s\n' "$(awk '{print $1}' "$OUT/vmlinuz64.md5.txt")"
     printf 'corepure64_md5=%s\n' "$(awk '{print $1}' "$OUT/corepure64.gz.md5.txt")"
 } > "$OUT/manifest.txt"
