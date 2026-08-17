@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "sequence": [
+    {"id": "kernel", "marker": "Linux version 6.18.35-tinycore64", "description": "Linux kernel entered and serial console is alive"},
+    {"id": "initramfs", "marker": "Trying to unpack rootfs image as initramfs", "description": "Kernel reached initramfs unpack"},
+    {"id": "pid1", "marker": "FLOW_DIAG 010 PID1_START OK", "description": "Diagnostic init is executing as PID 1"},
+    {"id": "proc", "marker": "FLOW_DIAG 020 PROCFS OK", "description": "procfs mounted and PID 1 visible"},
+    {"id": "sys", "marker": "FLOW_DIAG 030 SYSFS OK", "description": "sysfs mounted and kernel device model visible"},
+    {"id": "write", "marker": "FLOW_DIAG 040 WRITE_TEST OK", "description": "Early userspace has writable temporary storage"},
+    {"id": "cpu_mem", "marker": "FLOW_DIAG 050 CPU_MEMORY OK", "description": "CPU and memory accounting are sane"},
+    {"id": "clock", "marker": "FLOW_DIAG 060 CLOCK OK", "description": "Kernel clock is readable and non-zero"},
+    {"id": "devices", "marker": "FLOW_DIAG 070 DEVICES OK", "description": "Core device/sysfs model is available"},
+    {"id": "network", "marker": "FLOW_DIAG 080 NETWORK OK", "description": "Network stack and loopback interface are present"},
+    {"id": "bpf", "marker": "FLOW_DIAG 090 BPF OK", "description": "Kernel exposes BPF filesystem support or BPF syscall capability metadata"},
+    {"id": "flow", "marker": "FLOW_DIAG 100 FLOW_EXEC OK", "description": "A libc-free Flow executable ran successfully"},
+    {"id": "complete", "marker": "FLOW_DIAG 110 COMPLETE OK", "description": "All mandatory diagnostics completed in order"}
+  ],
+  "fatal_patterns": [
+    "Kernel panic",
+    "not syncing",
+    "BUG:",
+    "Oops:",
+    "general protection fault",
+    "segfault at",
+    "Unable to mount root fs",
+    "No working init found",
+    "Attempted to kill init"
+  ]
+}
