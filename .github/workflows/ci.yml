@@ -15,13 +15,27 @@ permissions:
 
 jobs:
   tinycore-x86_64:
-    name: Tiny Core CorePure64 boot
+    name: Tiny Core CorePure64 system health
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
       - name: Checkout Flow kernel integration
         uses: actions/checkout@v7
+
+      - name: Validate diagnostic tooling
+        run: |
+          python3 -m py_compile diagnostics/check_boot.py diagnostics/compare_health.py
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          contract = json.loads(Path('diagnostics/boot-sequence.json').read_text())
+          assert contract['schema'] == 2
+          ids = [s['id'] for s in contract['sequence']]
+          assert len(ids) == len(set(ids))
+          assert ids[0] == 'kernel'
+          assert ids[-1] == 'complete'
+          PY
 
       - name: Install build and boot-test tools
         run: |
@@ -57,7 +71,7 @@ jobs:
           grep -Fx 'kernel_version=6.18.35-tinycore64' /tmp/tinycore/manifest.txt
           cat /tmp/tinycore/manifest.txt
 
-      - name: Boot Tiny Core kernel under QEMU
+      - name: Boot stock Tiny Core kernel under QEMU
         run: |
           set +e
           timeout 20s qemu-system-x86_64 \
@@ -80,6 +94,10 @@ jobs:
             exit "$rc"
           fi
           grep -F 'Linux version 6.18.35-tinycore64' /tmp/tinycore-serial.log
+          if grep -Eqi 'Kernel panic|not syncing|BUG:|Oops:|general protection fault|Unable to mount root fs|No working init found|Attempted to kill init' /tmp/tinycore-serial.log; then
+            echo 'fatal signature detected in stock Tiny Core boot' >&2
+            exit 1
+          fi
 
       - name: Checkout Flow compiler externally
         run: |
@@ -100,12 +118,16 @@ jobs:
           ! readelf -l /tmp/flow-hello-build/flow-hello | grep -F 'Requesting program interpreter'
           ! nm -u /tmp/flow-hello-build/flow-hello | grep .
 
-      - name: Add diagnostic init and Flow service to CorePure64
+      - name: Add diagnostics and Flow service to CorePure64
         run: |
           mkdir -p /tmp/flow-overlay/opt
           cp /tmp/flow-hello-build/flow-hello /tmp/flow-overlay/opt/flow-hello
           cp diagnostics/init.sh /tmp/flow-overlay/opt/flow-diag-init
-          chmod 0755 /tmp/flow-overlay/opt/flow-hello /tmp/flow-overlay/opt/flow-diag-init
+          cp diagnostics/reboot_init.sh /tmp/flow-overlay/opt/flow-reboot-init
+          chmod 0755 \
+            /tmp/flow-overlay/opt/flow-hello \
+            /tmp/flow-overlay/opt/flow-diag-init \
+            /tmp/flow-overlay/opt/flow-reboot-init
 
           gzip -dc /tmp/tinycore/corepure64.gz > /tmp/flow-corepure64.cpio
           (
@@ -115,10 +137,10 @@ jobs:
           gzip -9 < /tmp/flow-corepure64.cpio > /tmp/flow-corepure64.gz
           gzip -t /tmp/flow-corepure64.gz
 
-      - name: Run ordered boot health sequence
+      - name: Run ordered Linux system-health sequence
         run: |
           set +e
-          timeout 20s qemu-system-x86_64 \
+          timeout 30s qemu-system-x86_64 \
             -machine accel=tcg \
             -cpu max \
             -m 256M \
@@ -141,6 +163,47 @@ jobs:
           python3 diagnostics/check_boot.py \
             /tmp/flow-diagnostics-serial.log \
             --report /tmp/boot-health.json
+          cp /tmp/boot-health.json /tmp/boot-health-baseline-candidate.json
+
+      - name: Compare health with committed baseline when available
+        run: |
+          if [[ -f diagnostics/baseline-health.json ]]; then
+            python3 diagnostics/compare_health.py \
+              /tmp/boot-health.json \
+              diagnostics/baseline-health.json \
+              --report /tmp/boot-health-regression.json
+          else
+            printf '%s\n' '{"schema":1,"baseline":"not-yet-promoted","ok":true}' \
+              > /tmp/boot-health-regression.json
+          fi
+
+      - name: Verify reboot lifecycle path
+        run: |
+          set +e
+          timeout 20s qemu-system-x86_64 \
+            -machine accel=tcg \
+            -cpu max \
+            -m 256M \
+            -kernel /tmp/tinycore/vmlinuz64 \
+            -initrd /tmp/flow-corepure64.gz \
+            -append 'console=ttyS0 rdinit=/opt/flow-reboot-init' \
+            -serial file:/tmp/flow-reboot-serial.log \
+            -display none \
+            -no-reboot
+          rc=$?
+          set -e
+
+          cat /tmp/flow-reboot-serial.log
+          grep -F 'FLOW_LIFECYCLE REBOOT_START' /tmp/flow-reboot-serial.log
+          grep -F 'FLOW_LIFECYCLE REBOOT_REQUESTED' /tmp/flow-reboot-serial.log
+          if grep -Fq 'FLOW_LIFECYCLE REBOOT_FAILED' /tmp/flow-reboot-serial.log; then
+            echo 'guest reboot syscall returned unexpectedly' >&2
+            exit 1
+          fi
+          if [[ "$rc" -ne 0 ]]; then
+            echo "reboot lifecycle QEMU exited with unexpected status $rc" >&2
+            exit "$rc"
+          fi
 
       - name: Probe upstream eBPF and BTF kernel configuration metadata
         continue-on-error: true
@@ -162,7 +225,7 @@ jobs:
             rm -f "$CONFIG.part"
           done
           if [[ "$found" -ne 1 ]]; then
-            echo 'Kernel config metadata unavailable; boot/service validation remains authoritative for this job.' >&2
+            echo 'Kernel config metadata unavailable; live boot/system-health validation remains authoritative.' >&2
             exit 1
           fi
 
@@ -175,19 +238,22 @@ jobs:
           grep -Fx 'CONFIG_BPF_EVENTS=y' /tmp/tinycore/bpf-config.txt
           grep -Fx 'CONFIG_DEBUG_INFO_BTF=y' /tmp/tinycore/bpf-config.txt
 
-      - name: Upload verification artifacts
+      - name: Upload system-health evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tinycore-x86_64-verification
+          name: tinycore-x86_64-system-health
           path: |
             /tmp/tinycore-serial.log
             /tmp/flow-diagnostics-serial.log
+            /tmp/flow-reboot-serial.log
             /tmp/boot-health.json
+            /tmp/boot-health-baseline-candidate.json
+            /tmp/boot-health-regression.json
             /tmp/tinycore/manifest.txt
             /tmp/tinycore/config-6.18.35-tinycore64
             /tmp/tinycore/config-source.txt
             /tmp/tinycore/bpf-config.txt
             /tmp/flow-hello-build/flow-hello
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: 14
