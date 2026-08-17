@@ -1,18 +1,7 @@
 # Minimal Flow userspace service for Tiny Core CorePure64.
 #
-# The service uses the Linux syscall ABI directly and requires no libc or
-# dynamic loader. `_start` is supplied by examples/start.S.
-
-@cEmbed("
-typedef unsigned long flow_u64;
-typedef long flow_i64;
-
-flow_i64 flow_hello_write(char* data, flow_u64 count) {
-    flow_i64 r;
-    __asm__ volatile ("syscall" : "=a"(r) : "a"(1), "D"(1), "S"(data), "d"(count) : "rcx", "r11", "memory");
-    return r;
-}
-")
+# The architecture-specific syscall instruction lives in examples/syscall.c;
+# Flow owns the service logic and the stable extern boundary.
 
 extern {
     function flow_hello_write(data: string, count: u64) -> i64
