@@ -1,19 +1,30 @@
 {
-  "schema": 1,
+  "schema": 2,
+  "kernel_version": "6.18.35-tinycore64",
   "sequence": [
-    {"id": "kernel", "marker": "Linux version 6.18.35-tinycore64", "description": "Linux kernel entered and serial console is alive"},
-    {"id": "initramfs", "marker": "Trying to unpack rootfs image as initramfs", "description": "Kernel reached initramfs unpack"},
-    {"id": "pid1", "marker": "FLOW_DIAG 010 PID1_START OK", "description": "Diagnostic init is executing as PID 1"},
-    {"id": "proc", "marker": "FLOW_DIAG 020 PROCFS OK", "description": "procfs mounted and PID 1 visible"},
-    {"id": "sys", "marker": "FLOW_DIAG 030 SYSFS OK", "description": "sysfs mounted and kernel device model visible"},
-    {"id": "write", "marker": "FLOW_DIAG 040 WRITE_TEST OK", "description": "Early userspace has writable temporary storage"},
-    {"id": "cpu_mem", "marker": "FLOW_DIAG 050 CPU_MEMORY OK", "description": "CPU and memory accounting are sane"},
-    {"id": "clock", "marker": "FLOW_DIAG 060 CLOCK OK", "description": "Kernel clock is readable and non-zero"},
-    {"id": "devices", "marker": "FLOW_DIAG 070 DEVICES OK", "description": "Core device/sysfs model is available"},
-    {"id": "network", "marker": "FLOW_DIAG 080 NETWORK OK", "description": "Network stack and loopback interface are present"},
-    {"id": "bpf", "marker": "FLOW_DIAG 090 BPF OK", "description": "Kernel exposes BPF filesystem support or BPF syscall capability metadata"},
-    {"id": "flow", "marker": "FLOW_DIAG 100 FLOW_EXEC OK", "description": "A libc-free Flow executable ran successfully"},
-    {"id": "complete", "marker": "FLOW_DIAG 110 COMPLETE OK", "description": "All mandatory diagnostics completed in order"}
+    {"id":"kernel","kind":"log","marker":"Linux version 6.18.35-tinycore64","severity":"required","description":"Linux kernel entered and serial console is alive"},
+    {"id":"initramfs","kind":"log","marker":"Trying to unpack rootfs image as initramfs","severity":"required","description":"Kernel reached initramfs unpack"},
+    {"id":"pid1","kind":"diag","seq":"010","name":"PID1_START","severity":"required","description":"Diagnostic init is executing as PID 1"},
+    {"id":"procfs","kind":"diag","seq":"020","name":"PROCFS","severity":"required","description":"procfs mounted and PID 1 is visible"},
+    {"id":"sysfs","kind":"diag","seq":"030","name":"SYSFS","severity":"required","description":"sysfs mounted and kernel device model is visible"},
+    {"id":"devices","kind":"diag","seq":"040","name":"DEVICES","severity":"required","description":"core character devices and sysfs classes are available"},
+    {"id":"write","kind":"diag","seq":"050","name":"WRITE_TEST","severity":"required","description":"early userspace can create and verify writable state"},
+    {"id":"cpu","kind":"diag","seq":"060","name":"CPU","severity":"required","description":"at least one CPU is enumerated"},
+    {"id":"memory","kind":"diag","seq":"070","name":"MEMORY","severity":"required","description":"memory accounting is present and non-zero"},
+    {"id":"clock","kind":"diag","seq":"080","name":"CLOCK_TIMER","severity":"required","description":"monotonic uptime advances across a sleep"},
+    {"id":"rng","kind":"diag","seq":"090","name":"RNG","severity":"required","description":"kernel random source can produce bytes"},
+    {"id":"process","kind":"diag","seq":"100","name":"PROCESS","severity":"required","description":"process creation and wait status work"},
+    {"id":"signal","kind":"diag","seq":"110","name":"SIGNAL","severity":"required","description":"signal delivery terminates a child process"},
+    {"id":"pipe","kind":"diag","seq":"120","name":"PIPE_IPC","severity":"required","description":"pipe-based IPC transfers data"},
+    {"id":"filesystem","kind":"diag","seq":"130","name":"FILESYSTEM","severity":"required","description":"create/read/write/rename/link filesystem operations work"},
+    {"id":"block","kind":"diag","seq":"140","name":"BLOCK","severity":"advisory","description":"kernel exposes at least one block-device class entry"},
+    {"id":"network","kind":"diag","seq":"150","name":"NETWORK","severity":"required","description":"loopback interface and network procfs state exist"},
+    {"id":"dns","kind":"diag","seq":"160","name":"DNS","severity":"advisory","description":"resolver configuration contains a nameserver"},
+    {"id":"namespace","kind":"diag","seq":"170","name":"NAMESPACES","severity":"required","description":"Linux namespace handles are exposed"},
+    {"id":"cgroup","kind":"diag","seq":"180","name":"CGROUP","severity":"advisory","description":"cgroup filesystem capability is present"},
+    {"id":"bpf","kind":"diag","seq":"190","name":"BPF","severity":"required","description":"kernel exposes BPF syscall/filesystem capability evidence"},
+    {"id":"flow","kind":"diag","seq":"200","name":"FLOW_EXEC","severity":"required","description":"libc-free Flow executable ran successfully"},
+    {"id":"complete","kind":"diag","seq":"210","name":"COMPLETE","severity":"required","description":"all required diagnostic stages completed in order"}
   ],
   "fatal_patterns": [
     "Kernel panic",
@@ -24,6 +35,12 @@
     "segfault at",
     "Unable to mount root fs",
     "No working init found",
-    "Attempted to kill init"
-  ]
+    "Attempted to kill init",
+    "FLOW_DIAG FAIL"
+  ],
+  "timing_policy": {
+    "warn_regression_ratio": 1.5,
+    "fail_regression_ratio": 3.0,
+    "absolute_slack_ms": 250
+  }
 }
