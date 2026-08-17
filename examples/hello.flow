@@ -1,0 +1,28 @@
+# Minimal Flow userspace service for Tiny Core CorePure64.
+#
+# The service uses the Linux syscall ABI directly and requires no libc or
+# dynamic loader. `_start` is supplied by examples/start.S.
+
+@cEmbed("
+typedef unsigned long flow_u64;
+typedef long flow_i64;
+
+flow_i64 flow_hello_write(const void* data, flow_u64 count) {
+    flow_i64 r;
+    __asm__ volatile (\"syscall\" : \"=a\"(r) : \"a\"(1), \"D\"(1), \"S\"(data), \"d\"(count) : \"rcx\", \"r11\", \"memory\");
+    return r;
+}
+")
+
+extern {
+    function flow_hello_write(data: string, count: u64) -> i64
+}
+
+export function hello_main() -> i32 {
+    let message = "Flow on Tiny Core: hello from a libc-free process\n"
+    let result = flow_hello_write(message, 49)
+    if result < 0 {
+        return 1
+    }
+    return 0
+}
