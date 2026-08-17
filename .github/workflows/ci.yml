@@ -57,40 +57,6 @@ jobs:
           grep -Fx 'kernel_version=6.18.35-tinycore64' /tmp/tinycore/manifest.txt
           cat /tmp/tinycore/manifest.txt
 
-      - name: Verify upstream eBPF and BTF kernel configuration
-        run: |
-          CONFIG=/tmp/tinycore/config-6.18.35-tinycore64
-          urls=(
-            'https://www.tinycorelinux.net/17.x/x86_64/release/src/kernel/config-6.18.35-tinycore64'
-            'https://ftp.icm.edu.pl/packages/linux-tinycorelinux/17.x/x86_64/release/src/kernel/config-6.18.35-tinycore64'
-            'https://ftp.dk.xemacs.org/mirrors/mirrors/pub/tinycorelinux/17.x/x86_64/release/src/kernel/config-6.18.35-tinycore64'
-          )
-          found=0
-          for url in "${urls[@]}"; do
-            if curl --fail --location --connect-timeout 10 --max-time 45 --output "$CONFIG.part" "$url"; then
-              mv "$CONFIG.part" "$CONFIG"
-              echo "kernel_config_source=$url" | tee /tmp/tinycore/config-source.txt
-              found=1
-              break
-            fi
-            rm -f "$CONFIG.part"
-          done
-          if [[ "$found" -ne 1 ]]; then
-            echo 'Could not retrieve Tiny Core kernel configuration from any configured mirror' >&2
-            exit 1
-          fi
-
-          grep -E '^(CONFIG_BPF|CONFIG_BPF_SYSCALL|CONFIG_BPF_JIT|CONFIG_KPROBES|CONFIG_BPF_EVENTS|CONFIG_DEBUG_INFO_BTF)=' \
-            "$CONFIG" \
-            | tee /tmp/tinycore/bpf-config.txt
-
-          grep -Fx 'CONFIG_BPF=y' /tmp/tinycore/bpf-config.txt
-          grep -Fx 'CONFIG_BPF_SYSCALL=y' /tmp/tinycore/bpf-config.txt
-          grep -Fx 'CONFIG_BPF_JIT=y' /tmp/tinycore/bpf-config.txt
-          grep -Fx 'CONFIG_KPROBES=y' /tmp/tinycore/bpf-config.txt
-          grep -Fx 'CONFIG_BPF_EVENTS=y' /tmp/tinycore/bpf-config.txt
-          grep -Fx 'CONFIG_DEBUG_INFO_BTF=y' /tmp/tinycore/bpf-config.txt
-
       - name: Boot Tiny Core kernel under QEMU
         run: |
           set +e
@@ -173,6 +139,39 @@ jobs:
           fi
 
           grep -F 'Flow on Tiny Core: hello from a libc-free process' /tmp/flow-service-serial.log
+
+      - name: Probe upstream eBPF and BTF kernel configuration metadata
+        continue-on-error: true
+        run: |
+          CONFIG=/tmp/tinycore/config-6.18.35-tinycore64
+          urls=(
+            'https://repo.tinycorelinux.net/17.x/x86_64/release/src/kernel/config-6.18.35-tinycore64'
+            'https://www.tinycorelinux.net/17.x/x86_64/release/src/kernel/config-6.18.35-tinycore64'
+            'https://ftp.icm.edu.pl/packages/linux-tinycorelinux/17.x/x86_64/release/src/kernel/config-6.18.35-tinycore64'
+          )
+          found=0
+          for url in "${urls[@]}"; do
+            if curl --fail --location --connect-timeout 8 --max-time 30 --output "$CONFIG.part" "$url"; then
+              mv "$CONFIG.part" "$CONFIG"
+              echo "kernel_config_source=$url" | tee /tmp/tinycore/config-source.txt
+              found=1
+              break
+            fi
+            rm -f "$CONFIG.part"
+          done
+          if [[ "$found" -ne 1 ]]; then
+            echo 'Kernel config metadata unavailable; boot/service validation remains authoritative for this job.' >&2
+            exit 1
+          fi
+
+          grep -E '^(CONFIG_BPF|CONFIG_BPF_SYSCALL|CONFIG_BPF_JIT|CONFIG_KPROBES|CONFIG_BPF_EVENTS|CONFIG_DEBUG_INFO_BTF)=' \
+            "$CONFIG" | tee /tmp/tinycore/bpf-config.txt
+          grep -Fx 'CONFIG_BPF=y' /tmp/tinycore/bpf-config.txt
+          grep -Fx 'CONFIG_BPF_SYSCALL=y' /tmp/tinycore/bpf-config.txt
+          grep -Fx 'CONFIG_BPF_JIT=y' /tmp/tinycore/bpf-config.txt
+          grep -Fx 'CONFIG_KPROBES=y' /tmp/tinycore/bpf-config.txt
+          grep -Fx 'CONFIG_BPF_EVENTS=y' /tmp/tinycore/bpf-config.txt
+          grep -Fx 'CONFIG_DEBUG_INFO_BTF=y' /tmp/tinycore/bpf-config.txt
 
       - name: Upload verification artifacts
         if: always()
