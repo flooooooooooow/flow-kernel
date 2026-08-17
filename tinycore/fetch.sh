@@ -10,9 +10,9 @@ TC_FETCH_TIMEOUT="${TC_FETCH_TIMEOUT:-90}"
 OUT="${1:-$ROOT/build/tinycore}"
 
 BASE_URLS=(
-    "https://www.tinycorelinux.net/${TC_MAJOR}/x86_64/release/distribution_files"
     "https://ftp.icm.edu.pl/packages/linux-tinycorelinux/${TC_MAJOR}/x86_64/release/distribution_files"
-    "https://ftp.dk.xemacs.org/mirrors/mirrors/pub/tinycorelinux/${TC_MAJOR}/x86_64/release/distribution_files"
+    "https://repo.tinycorelinux.net/${TC_MAJOR}/x86_64/release/distribution_files"
+    "https://www.tinycorelinux.net/${TC_MAJOR}/x86_64/release/distribution_files"
 )
 
 mkdir -p "$OUT"
