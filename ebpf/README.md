@@ -6,7 +6,31 @@ The compiler implementation itself belongs in `flooooooooooow/flow`. This reposi
 
 ## Target contract
 
-The intended compiler contract is a little-endian Linux eBPF target (`bpfel`) lowered through Flow's MLIR/LLVM path into standalone eBPF ELF objects. Programs must not depend on the normal Flow runtime, dynamic allocation, unwinding or unsupported indirect behaviour. Pointer provenance, stack use and loop lowering must be verifier-safe before an object is handed to the kernel.
+The intended compiler contract is a little-endian Linux eBPF target (`bpfel`) lowered through Flow's MLIR/LLVM path into standalone eBPF ELF objects.
+
+The first backend must enforce these invariants before verifier load:
+
+- no dependency on the normal Flow runtime
+- no dynamic allocation
+- no exceptions or unwinding
+- bounded/verifier-safe loops
+- bounded stack use
+- verifier-safe pointer provenance
+- no unsupported indirect calls or dynamic dispatch
+- target-specific helper availability
+- deterministic ELF section/program metadata
+
+## Canonical lowering
+
+```text
+Flow source
+  → Flow AST / typed IR
+  → MLIR / LLVM lowering
+  → LLVM BPF target (bpfel)
+  → standalone eBPF ELF
+  → Linux verifier
+  → attach to Linux hook
+```
 
 ## Initial hook order
 
