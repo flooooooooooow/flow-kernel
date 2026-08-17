@@ -7,9 +7,9 @@
 typedef unsigned long flow_u64;
 typedef long flow_i64;
 
-flow_i64 flow_hello_write(const void* data, flow_u64 count) {
+flow_i64 flow_hello_write(char* data, flow_u64 count) {
     flow_i64 r;
-    __asm__ volatile (\"syscall\" : \"=a\"(r) : \"a\"(1), \"D\"(1), \"S\"(data), \"d\"(count) : \"rcx\", \"r11\", \"memory\");
+    __asm__ volatile ("syscall" : "=a"(r) : "a"(1), "D"(1), "S"(data), "d"(count) : "rcx", "r11", "memory");
     return r;
 }
 ")
