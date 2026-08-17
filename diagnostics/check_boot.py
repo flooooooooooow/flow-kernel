@@ -3,8 +3,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
+
+DIAG_RE = re.compile(
+    r"FLOW_DIAG\s+(?P<seq>\d{3})\s+(?P<name>[A-Z0-9_]+)\s+"
+    r"(?P<status>OK|WARN)\s+t_ms=(?P<time>\d+)"
+)
 
 
 def load_contract(path: Path) -> dict:
@@ -13,7 +19,7 @@ def load_contract(path: Path) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Verify an ordered Linux boot diagnostic sequence.")
+    parser = argparse.ArgumentParser(description="Verify ordered Linux boot/system-health diagnostics.")
     parser.add_argument("log", type=Path)
     parser.add_argument(
         "--contract",
@@ -27,37 +33,89 @@ def main() -> int:
     contract = load_contract(args.contract)
 
     failures: list[str] = []
-    evidence: list[dict[str, object]] = []
+    degraded: list[str] = []
+    stages: list[dict[str, object]] = []
+    last_good: str | None = None
 
     lower_text = text.lower()
     for pattern in contract["fatal_patterns"]:
         if pattern.lower() in lower_text:
             failures.append(f"fatal boot pattern present: {pattern}")
 
+    diag_matches = list(DIAG_RE.finditer(text))
+    diag_by_key = {(m.group("seq"), m.group("name")): m for m in diag_matches}
+
     cursor = -1
+    previous_time: int | None = None
     for stage in contract["sequence"]:
-        marker = stage["marker"]
-        position = text.find(marker, cursor + 1)
-        ok = position >= 0
-        if not ok:
-            failures.append(f"missing or out-of-order stage {stage['id']}: {marker}")
+        severity = stage.get("severity", "required")
+        status = "MISSING"
+        position = -1
+        time_ms: int | None = None
+
+        if stage.get("kind") == "log":
+            position = text.find(stage["marker"], cursor + 1)
+            if position >= 0:
+                status = "OK"
         else:
+            match = diag_by_key.get((stage["seq"], stage["name"]))
+            if match is not None:
+                position = match.start()
+                status = match.group("status")
+                time_ms = int(match.group("time"))
+
+        ordered = position >= 0 and position > cursor
+        if position >= 0 and not ordered:
+            status = "OUT_OF_ORDER"
+
+        if ordered:
             cursor = position
-        evidence.append(
+            last_good = stage["id"]
+            if time_ms is not None and previous_time is not None and time_ms < previous_time:
+                failures.append(
+                    f"non-monotonic diagnostic timing at {stage['id']}: {time_ms} < {previous_time}"
+                )
+            if time_ms is not None:
+                previous_time = time_ms
+        else:
+            message = f"missing or out-of-order stage {stage['id']}"
+            if severity == "required":
+                failures.append(message)
+            else:
+                degraded.append(message)
+
+        if status == "WARN":
+            degraded.append(f"advisory stage degraded: {stage['id']}")
+        elif status not in {"OK", "WARN"} and ordered and severity == "required":
+            failures.append(f"required stage {stage['id']} ended with status {status}")
+
+        stages.append(
             {
                 "id": stage["id"],
                 "description": stage["description"],
-                "marker": marker,
-                "ok": ok,
+                "severity": severity,
+                "status": status,
+                "ok": ordered and status in {"OK", "WARN"},
+                "degraded": status == "WARN",
                 "offset": position,
+                "time_ms": time_ms,
             }
         )
+
+    summary_match = re.search(r"FLOW_DIAG SUMMARY HEALTHY t_ms=(\d+)", text)
+    total_time_ms = int(summary_match.group(1)) if summary_match else None
+    if not summary_match:
+        failures.append("missing final HEALTHY summary marker")
 
     report = {
         "schema": contract.get("schema", 1),
         "log": str(args.log),
         "ok": not failures,
-        "stages": evidence,
+        "health": "healthy" if not failures and not degraded else ("degraded" if not failures else "failed"),
+        "last_good_stage": last_good,
+        "total_time_ms": total_time_ms,
+        "stages": stages,
+        "degraded": degraded,
         "failures": failures,
     }
 
