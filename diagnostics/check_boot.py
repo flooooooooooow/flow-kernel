@@ -11,6 +11,7 @@ DIAG_RE = re.compile(
     r"FLOW_DIAG\s+(?P<seq>\d{3})\s+(?P<name>[A-Z0-9_]+)\s+"
     r"(?P<status>OK|WARN)\s+t_ms=(?P<time>\d+)"
 )
+EVIDENCE_RE = re.compile(r"^FLOW_EVIDENCE\s+(?P<key>[A-Za-z0-9_]+)=(?P<value>.*)$", re.MULTILINE)
 
 
 def load_contract(path: Path) -> dict:
@@ -44,6 +45,10 @@ def main() -> int:
 
     diag_matches = list(DIAG_RE.finditer(text))
     diag_by_key = {(m.group("seq"), m.group("name")): m for m in diag_matches}
+    evidence_values = {
+        match.group("key"): match.group("value").strip()
+        for match in EVIDENCE_RE.finditer(text)
+    }
 
     cursor = -1
     previous_time: int | None = None
@@ -107,13 +112,15 @@ def main() -> int:
     if not summary_match:
         failures.append("missing final HEALTHY summary marker")
 
+    health = "healthy" if not failures and not degraded else ("degraded" if not failures else "failed")
     report = {
         "schema": contract.get("schema", 1),
         "log": str(args.log),
         "ok": not failures,
-        "health": "healthy" if not failures and not degraded else ("degraded" if not failures else "failed"),
+        "health": health,
         "last_good_stage": last_good,
         "total_time_ms": total_time_ms,
+        "evidence": evidence_values,
         "stages": stages,
         "degraded": degraded,
         "failures": failures,
