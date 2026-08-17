@@ -27,7 +27,7 @@ Tiny Core is the substrate, not a fork. We consume its `vmlinuz64` and `corepure
 
 ## Fetch the Tiny Core base
 
-The default tracks Tiny Core CorePure64 17.0 with Linux `6.18.2-tinycore64`. The fetch script verifies Tiny Core's published MD5 sidecars and records a manifest containing the exact version and checksums used.
+The default tracks Tiny Core CorePure64 17.1 with Linux `6.18.35-tinycore64`. The fetch script tries the Tiny Core origin followed by configured public mirrors, verifies Tiny Core's published MD5 sidecars, and records a manifest containing the exact version, source mirror and checksums used.
 
 ```bash
 bash tinycore/fetch.sh
