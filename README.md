@@ -20,7 +20,7 @@ Tiny Core is the substrate, not a fork. We consume its `vmlinuz64` and `corepure
 
 ## Fetch the Tiny Core base
 
-The default is the pinned CorePure64 17.0 release. Override `TC_MAJOR` and `TC_VERSION` when intentionally moving the base.
+The default tracks the CorePure64 `17.x` release line. Override `TC_MAJOR` when intentionally moving to another Tiny Core line.
 
 ```bash
 bash tinycore/fetch.sh
