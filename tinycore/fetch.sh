@@ -3,7 +3,6 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TC_MAJOR="${TC_MAJOR:-17.x}"
-TC_VERSION="${TC_VERSION:-17.0}"
 OUT="${1:-$ROOT/build/tinycore}"
 BASE_URL="https://www.tinycorelinux.net/${TC_MAJOR}/x86_64/release/distribution_files"
 
@@ -28,6 +27,6 @@ fetch()
 fetch vmlinuz64
 fetch corepure64.gz
 
-printf 'Tiny Core CorePure64 %s base ready in %s\n' "$TC_VERSION" "$OUT"
+printf 'Tiny Core CorePure64 %s base ready in %s\n' "$TC_MAJOR" "$OUT"
 printf 'Kernel: %s\n' "$OUT/vmlinuz64"
 printf 'Initramfs: %s\n' "$OUT/corepure64.gz"
