@@ -20,7 +20,7 @@ extern {
 
 export function hello_main() -> i32 {
     let message = "Flow on Tiny Core: hello from a libc-free process\n"
-    let result = flow_hello_write(message, 49)
+    let result = flow_hello_write(message, 50)
     if result < 0 {
         return 1
     }
