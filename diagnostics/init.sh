@@ -44,10 +44,12 @@ mount -t sysfs sysfs /sys || fail "cannot mount sysfs"
 [ -d /sys/devices ] || fail "sysfs device model missing"
 mark 030 SYSFS OK
 
+mount -t devtmpfs devtmpfs /dev || fail "cannot mount devtmpfs"
 [ -d /sys/class ] || fail "sysfs classes missing"
-[ -e /dev/null ] || mknod /dev/null c 1 3 || fail "cannot create /dev/null"
-[ -e /dev/console ] || mknod /dev/console c 5 1 || fail "cannot create /dev/console"
-[ -e /dev/urandom ] || mknod /dev/urandom c 1 9 || fail "cannot create /dev/urandom"
+[ -e /dev/null ] || fail "/dev/null missing from devtmpfs"
+[ -e /dev/console ] || fail "/dev/console missing from devtmpfs"
+[ -e /dev/urandom ] || fail "/dev/urandom missing from devtmpfs"
+evidence devtmpfs_mounted true
 mark 040 DEVICES OK
 
 printf 'flow-kernel-diagnostic\n' >/tmp/flow-write-test || fail "cannot write /tmp"
@@ -136,11 +138,23 @@ fi
 [ -e /proc/self/ns/net ] || fail "network namespace handle missing"
 mark 170 NAMESPACES OK
 
-if grep -qE '(^|[[:space:]])cgroup2?($|[[:space:]])' /proc/filesystems 2>/dev/null; then
+cgroup_mounted=false
+if grep -qE '(^|[[:space:]])cgroup2($|[[:space:]])' /proc/filesystems 2>/dev/null; then
+    if mount -t cgroup2 cgroup2 /sys/fs/cgroup 2>/dev/null; then
+        cgroup_mounted=true
+    fi
+elif grep -qE '(^|[[:space:]])cgroup($|[[:space:]])' /proc/filesystems 2>/dev/null; then
+    if mount -t cgroup cgroup /sys/fs/cgroup 2>/dev/null; then
+        cgroup_mounted=true
+    fi
+fi
+if [ "$cgroup_mounted" = true ]; then
     evidence cgroup_capable true
+    evidence cgroup_mounted true
     mark 180 CGROUP OK
 else
     evidence cgroup_capable false
+    evidence cgroup_mounted false
     advisory 180 CGROUP
 fi
 
