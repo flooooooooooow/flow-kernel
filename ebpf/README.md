@@ -1,18 +1,20 @@
 # Flow eBPF
 
-Linux eBPF is the first kernel-facing execution target for Flow on the Tiny Core base.
+This directory is the kernel-facing eBPF layer for Flow.
 
-The implementation should lower a verifier-safe Flow subset to eBPF rather than recreate Linux kernel infrastructure. Initial scope:
+The compiler implementation itself belongs in `flooooooooooow/flow`. This repository owns the Linux program model around that backend: section conventions, helper/map bindings, verifier-safe APIs, loaders, attach/detach workflows, Tiny Core integration, examples and end-to-end kernel tests.
 
-- BPF ELF emission and section metadata
-- maps and map declarations
-- verifier-safe scalar and pointer operations
-- Linux helper bindings
-- tracepoints and kprobes
-- XDP programs
-- TC ingress/egress hooks
-- BTF type ingestion
-- CO-RE-style relocations
-- deterministic host-side tests against the Linux verifier
+## Target contract
 
-The Tiny Core image is intentionally only the execution substrate. Compiler/backend work belongs in `flooooooooooow/flow`; this repository owns Linux integration, fixtures, boot images and end-to-end kernel tests.
+The intended compiler contract is a little-endian Linux eBPF target (`bpfel`) lowered through Flow's MLIR/LLVM path into standalone eBPF ELF objects. Programs must not depend on the normal Flow runtime, dynamic allocation, unwinding or unsupported indirect behaviour. Pointer provenance, stack use and loop lowering must be verifier-safe before an object is handed to the kernel.
+
+## Initial hook order
+
+1. tracepoints
+2. kprobes/fentry where supported
+3. ring-buffer event delivery
+4. XDP
+5. TC ingress/egress
+6. CO-RE/BTF-based portable programs
+
+Stock Tiny Core kernel capabilities are inspected explicitly in CI. If CorePure64 does not expose the BPF/BTF features required by a phase, the project should add a reproducible Tiny Core kernel variant rather than silently assuming support.
