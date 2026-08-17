@@ -43,6 +43,10 @@ bash tinycore/run.sh
 
 This boots the Tiny Core Linux kernel and initramfs directly in QEMU with the serial console attached to the terminal. No GRUB image and no Flow-owned architecture bootstrap are involved.
 
+## Verification
+
+CI caches the Tiny Core base, revalidates the published checksum sidecars, records the exact source/version/checksums, captures the serial boot log and archives the shipped kernel configuration. The eBPF/BTF feature set is intentionally checked from the real Tiny Core kernel config instead of assumed from the Linux version.
+
 ## Flow compiler
 
 Flow remains a separate dependency. Kernel-facing Flow programs in this repository should compile against Linux ABIs or to eBPF; the language/compiler belongs in `flooooooooooow/flow` and is checked out independently in CI.
