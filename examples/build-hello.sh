@@ -31,6 +31,18 @@ clang \
 
 clang \
     -target x86_64-linux-gnu \
+    -std=c11 \
+    -ffreestanding \
+    -fno-builtin \
+    -fno-stack-protector \
+    -fno-pic \
+    -fno-pie \
+    -O2 \
+    -c "$ROOT/examples/syscall.c" \
+    -o "$OUT/syscall.o"
+
+clang \
+    -target x86_64-linux-gnu \
     -ffreestanding \
     -fno-pic \
     -fno-pie \
@@ -43,10 +55,14 @@ ld.lld \
     -e _start \
     "$OUT/start.o" \
     "$OUT/hello-flow.o" \
+    "$OUT/syscall.o" \
     -o "$OUT/flow-hello"
 
 if command -v readelf >/dev/null 2>&1; then
-    readelf -l "$OUT/flow-hello" | grep -qv 'Requesting program interpreter'
+    if readelf -l "$OUT/flow-hello" | grep -F 'Requesting program interpreter'; then
+        echo 'flow-hello unexpectedly requires a dynamic loader' >&2
+        exit 1
+    fi
 fi
 
 printf '%s\n' "$OUT/flow-hello"
