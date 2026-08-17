@@ -1,30 +1,45 @@
 # Flow Kernel
 
-A freestanding kernel written in Flow.
+Flow systems integration on top of a deliberately tiny Linux base.
 
-The first target is x86_64 booted through Multiboot2. Flow owns the kernel entry contract and policy-facing primitives; the architecture layer is restricted to CPU operations that cannot yet be expressed portably in Flow.
+`flow-kernel` no longer implements its own bootloader, page tables, scheduler, interrupt subsystem, or virtual-memory manager. Those are Linux responsibilities. The base target is Tiny Core Linux CorePure64: a minimal command-line Linux system that gives Flow a mature x86_64 kernel, drivers, networking, processes, namespaces, cgroups, perf and the native Linux eBPF surface without dragging in a conventional desktop distribution.
 
-The current base boots in 32-bit Multiboot2 mode, establishes an identity-mapped 1 GiB long-mode address space with 2 MiB pages, enters x86_64 long mode, installs a 64 KiB kernel stack, and calls the stable Flow C ABI entry `flow_export_kernel_main`. The Flow entry validates the Multiboot2 contract and reports boot state over COM1 serial.
+## Architecture
 
-## Build
-
-The kernel consumes the Flow compiler as an external dependency. Set `FLOW` to the Flow driver you want to use, or place a sibling checkout at `../flow`.
-
-```bash
-git clone https://github.com/flooooooooooow/flow.git ../flow
-FLOW=../flow/flow bash x86_64/build.sh
+```text
+Linux kernel
+  ↑
+Tiny Core CorePure64 userspace
+  ↑
+Flow system services / kernel-facing components
+  ↑
+Flow eBPF, XDP, tracing and driver experiments
 ```
 
-The build requires Flow's normal transpiler dependencies plus `clang` and `ld.lld`. If `grub-file` is installed, the resulting ELF is also validated as Multiboot2.
+Tiny Core is the substrate, not a fork. We consume its `vmlinuz64` and `corepure64.gz` release artifacts directly.
 
-## Boot
+## Fetch the Tiny Core base
+
+The default is the pinned CorePure64 17.0 release. Override `TC_MAJOR` and `TC_VERSION` when intentionally moving the base.
 
 ```bash
-FLOW=../flow/flow bash x86_64/run.sh
+bash tinycore/fetch.sh
 ```
 
-That additionally requires `grub-mkrescue` and `qemu-system-x86_64`. Successful boot reaches the serial message `Flow kernel: boot contract accepted`.
+Artifacts are placed under `build/tinycore/`.
+
+## Boot it
+
+```bash
+bash tinycore/run.sh
+```
+
+This boots the Tiny Core Linux kernel and initramfs directly in QEMU with the serial console attached to the terminal. No GRUB image and no Flow-owned architecture bootstrap are involved.
+
+## Flow compiler
+
+Flow remains a separate dependency. Kernel-facing Flow programs in this repository should compile against Linux ABIs or to eBPF; the language/compiler belongs in `flooooooooooow/flow` and is checked out independently in CI.
 
 ## Roadmap
 
-The next layers are Multiboot2 memory-map ingestion, a physical page allocator, interrupt/exception tables, timer-driven scheduling, syscall entry, virtual memory ownership, and then the eBPF verifier/interpreter/JIT hooks. eBPF should consume explicit kernel hook surfaces rather than becoming part of the boot substrate.
+The next work is deliberately Linux-native: add a Flow-to-eBPF target, BTF-aware bindings, maps, verifier-safe helpers, tracepoint/kprobe hooks, XDP, TC hooks and eventually CO-RE-style relocatable programs. User-space Flow services can remain tiny and run directly on CorePure64.
