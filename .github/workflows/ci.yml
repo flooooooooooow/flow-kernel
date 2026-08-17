@@ -2,7 +2,6 @@ name: Kernel CI
 
 on:
   push:
-    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -32,13 +31,34 @@ jobs:
             file \
             qemu-system-x86
 
-      - name: Fetch Tiny Core Linux base
+      - name: Cache Tiny Core base
+        uses: actions/cache@v4
+        with:
+          path: /tmp/tinycore
+          key: tinycore-corepure64-17.0-linux-6.18.2
+
+      - name: Fetch and verify Tiny Core Linux base
+        env:
+          TC_MAJOR: 17.x
+          TC_VERSION: '17.0'
+          TC_KERNEL: 6.18.2-tinycore64
         run: |
           bash tinycore/fetch.sh /tmp/tinycore
           test -s /tmp/tinycore/vmlinuz64
           test -s /tmp/tinycore/corepure64.gz
+          test -s /tmp/tinycore/manifest.txt
           file /tmp/tinycore/vmlinuz64
           gzip -t /tmp/tinycore/corepure64.gz
+          cat /tmp/tinycore/manifest.txt
+
+      - name: Record upstream kernel configuration
+        run: |
+          curl --fail --location --retry 3 \
+            --output /tmp/tinycore/config-6.18.2-tinycore64 \
+            https://www.tinycorelinux.net/17.x/x86_64/release/src/kernel/config-6.18.2-tinycore64
+
+          grep -E '^(CONFIG_BPF|CONFIG_BPF_SYSCALL|CONFIG_BPF_JIT|CONFIG_KPROBES|CONFIG_BPF_EVENTS|CONFIG_DEBUG_INFO_BTF)=' \
+            /tmp/tinycore/config-6.18.2-tinycore64 || true
 
       - name: Boot Tiny Core kernel under QEMU
         run: |
@@ -63,7 +83,7 @@ jobs:
             exit "$rc"
           fi
 
-          grep -F 'Linux version' /tmp/tinycore-serial.log
+          grep -F 'Linux version 6.18.2-tinycore64' /tmp/tinycore-serial.log
 
       - name: Verify Flow compiler remains external
         run: |
@@ -71,11 +91,14 @@ jobs:
           test -x /tmp/flow/flow
           test ! -e ./flow
 
-      - name: Upload boot log
+      - name: Upload verification artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tinycore-x86_64-boot
-          path: /tmp/tinycore-serial.log
+          name: tinycore-x86_64-verification
+          path: |
+            /tmp/tinycore-serial.log
+            /tmp/tinycore/manifest.txt
+            /tmp/tinycore/config-6.18.2-tinycore64
           if-no-files-found: warn
           retention-days: 7
