@@ -39,13 +39,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/tinycore
-          key: tinycore-corepure64-17.0-linux-6.18.2
+          key: tinycore-corepure64-17.1-linux-6.18.35
 
       - name: Fetch and verify Tiny Core Linux base
         env:
           TC_MAJOR: 17.x
-          TC_VERSION: '17.0'
-          TC_KERNEL: 6.18.2-tinycore64
+          TC_VERSION: '17.1'
+          TC_KERNEL: 6.18.35-tinycore64
         run: |
           bash tinycore/fetch.sh /tmp/tinycore
           test -s /tmp/tinycore/vmlinuz64
@@ -53,16 +53,35 @@ jobs:
           test -s /tmp/tinycore/manifest.txt
           file /tmp/tinycore/vmlinuz64
           gzip -t /tmp/tinycore/corepure64.gz
+          grep -Fx 'tinycore_version=17.1' /tmp/tinycore/manifest.txt
+          grep -Fx 'kernel_version=6.18.35-tinycore64' /tmp/tinycore/manifest.txt
           cat /tmp/tinycore/manifest.txt
 
       - name: Verify upstream eBPF and BTF kernel configuration
         run: |
-          curl --fail --location --retry 3 \
-            --output /tmp/tinycore/config-6.18.2-tinycore64 \
-            https://www.tinycorelinux.net/17.x/x86_64/release/src/kernel/config-6.18.2-tinycore64
+          CONFIG=/tmp/tinycore/config-6.18.35-tinycore64
+          urls=(
+            'https://www.tinycorelinux.net/17.x/x86_64/release/src/kernel/config-6.18.35-tinycore64'
+            'https://ftp.icm.edu.pl/packages/linux-tinycorelinux/17.x/x86_64/release/src/kernel/config-6.18.35-tinycore64'
+            'https://ftp.dk.xemacs.org/mirrors/mirrors/pub/tinycorelinux/17.x/x86_64/release/src/kernel/config-6.18.35-tinycore64'
+          )
+          found=0
+          for url in "${urls[@]}"; do
+            if curl --fail --location --connect-timeout 10 --max-time 45 --output "$CONFIG.part" "$url"; then
+              mv "$CONFIG.part" "$CONFIG"
+              echo "kernel_config_source=$url" | tee /tmp/tinycore/config-source.txt
+              found=1
+              break
+            fi
+            rm -f "$CONFIG.part"
+          done
+          if [[ "$found" -ne 1 ]]; then
+            echo 'Could not retrieve Tiny Core kernel configuration from any configured mirror' >&2
+            exit 1
+          fi
 
           grep -E '^(CONFIG_BPF|CONFIG_BPF_SYSCALL|CONFIG_BPF_JIT|CONFIG_KPROBES|CONFIG_BPF_EVENTS|CONFIG_DEBUG_INFO_BTF)=' \
-            /tmp/tinycore/config-6.18.2-tinycore64 \
+            "$CONFIG" \
             | tee /tmp/tinycore/bpf-config.txt
 
           grep -Fx 'CONFIG_BPF=y' /tmp/tinycore/bpf-config.txt
@@ -95,7 +114,7 @@ jobs:
             exit "$rc"
           fi
 
-          grep -F 'Linux version 6.18.2-tinycore64' /tmp/tinycore-serial.log
+          grep -F 'Linux version 6.18.35-tinycore64' /tmp/tinycore-serial.log
 
       - name: Checkout Flow compiler externally
         run: |
@@ -164,7 +183,8 @@ jobs:
             /tmp/tinycore-serial.log
             /tmp/flow-service-serial.log
             /tmp/tinycore/manifest.txt
-            /tmp/tinycore/config-6.18.2-tinycore64
+            /tmp/tinycore/config-6.18.35-tinycore64
+            /tmp/tinycore/config-source.txt
             /tmp/tinycore/bpf-config.txt
             /tmp/flow-hello-build/flow-hello
           if-no-files-found: warn
