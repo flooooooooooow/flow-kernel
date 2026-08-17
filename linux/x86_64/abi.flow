@@ -1,0 +1,69 @@
+# Linux x86_64 raw syscall ABI for Flow.
+#
+# These wrappers intentionally bypass libc. Linux returns negative errno values
+# directly; callers decide whether and how to translate them.
+
+@cEmbed("
+typedef unsigned long flow_u64;
+typedef long flow_i64;
+typedef int flow_i32;
+
+static inline flow_i64 flow_linux_syscall1(flow_i64 n, flow_i64 a1) {
+    flow_i64 r;
+    __asm__ volatile (\"syscall\" : \"=a\"(r) : \"a\"(n), \"D\"(a1) : \"rcx\", \"r11\", \"memory\");
+    return r;
+}
+
+static inline flow_i64 flow_linux_syscall2(flow_i64 n, flow_i64 a1, flow_i64 a2) {
+    flow_i64 r;
+    __asm__ volatile (\"syscall\" : \"=a\"(r) : \"a\"(n), \"D\"(a1), \"S\"(a2) : \"rcx\", \"r11\", \"memory\");
+    return r;
+}
+
+static inline flow_i64 flow_linux_syscall3(flow_i64 n, flow_i64 a1, flow_i64 a2, flow_i64 a3) {
+    flow_i64 r;
+    __asm__ volatile (\"syscall\" : \"=a\"(r) : \"a\"(n), \"D\"(a1), \"S\"(a2), \"d\"(a3) : \"rcx\", \"r11\", \"memory\");
+    return r;
+}
+
+static inline flow_i64 flow_linux_syscall6(flow_i64 n, flow_i64 a1, flow_i64 a2, flow_i64 a3, flow_i64 a4, flow_i64 a5, flow_i64 a6) {
+    register flow_i64 r10 __asm__(\"r10\") = a4;
+    register flow_i64 r8 __asm__(\"r8\") = a5;
+    register flow_i64 r9 __asm__(\"r9\") = a6;
+    flow_i64 r;
+    __asm__ volatile (\"syscall\" : \"=a\"(r) : \"a\"(n), \"D\"(a1), \"S\"(a2), \"d\"(a3), \"r\"(r10), \"r\"(r8), \"r\"(r9) : \"rcx\", \"r11\", \"memory\");
+    return r;
+}
+
+flow_i64 flow_linux_write(flow_i32 fd, const void* data, flow_u64 count) {
+    return flow_linux_syscall3(1, fd, (flow_i64)data, count);
+}
+
+__attribute__((noreturn)) void flow_linux_exit(flow_i32 status) {
+    flow_linux_syscall1(60, status);
+    __builtin_unreachable();
+}
+
+flow_i64 flow_linux_mmap(void* address, flow_u64 length, flow_i32 protection, flow_i32 flags, flow_i32 fd, flow_i64 offset) {
+    return flow_linux_syscall6(9, (flow_i64)address, length, protection, flags, fd, offset);
+}
+
+flow_i64 flow_linux_clock_gettime(flow_i32 clock_id, void* timespec) {
+    return flow_linux_syscall2(228, clock_id, (flow_i64)timespec);
+}
+")
+
+extern {
+    function flow_linux_write(fd: i32, data: ptr<void>, count: u64) -> i64
+    function flow_linux_exit(status: i32) -> void
+    function flow_linux_mmap(address: ptr<void>, length: u64, protection: i32, flags: i32, fd: i32, offset: i64) -> i64
+    function flow_linux_clock_gettime(clock_id: i32, timespec: ptr<void>) -> i64
+}
+
+export function linux_stdout_fd() -> i32 {
+    return 1
+}
+
+export function linux_stderr_fd() -> i32 {
+    return 2
+}
