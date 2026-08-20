@@ -29,6 +29,8 @@ Download the `flow-kernel-android-x86_64` artifact from a successful GitHub Acti
 ```text
 flow-kernel.iso
 termux-run.sh
+termux-setup.sh
+README.md
 SHA256SUMS
 ```
 
