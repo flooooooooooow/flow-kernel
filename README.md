@@ -25,6 +25,21 @@ FLOW=../flow/flow bash x86_64/run.sh
 
 That additionally requires `grub-mkrescue` and `qemu-system-x86_64`. Successful boot reaches the serial message `Flow kernel: boot contract accepted`.
 
+## Boot on Android
+
+The same x86_64 ISO can boot on a 64-bit Android phone through Termux and QEMU TCG without root or bootloader changes.
+
+```bash
+pkg update
+pkg install x11-repo
+pkg install qemu-system-x86-64
+bash android/termux-run.sh /path/to/flow-kernel.iso
+```
+
+CI publishes a `flow-kernel-android-x86_64` artifact containing the ISO, Android runner, and checksum manifest. See [`android/README.md`](android/README.md) for the complete phone workflow.
+
 ## Roadmap
 
 The next layers are Multiboot2 memory-map ingestion, a physical page allocator, interrupt/exception tables, timer-driven scheduling, syscall entry, virtual memory ownership, and then the eBPF verifier/interpreter/JIT hooks. eBPF should consume explicit kernel hook surfaces rather than becoming part of the boot substrate.
+
+An `aarch64` architecture target is also planned so ARM64 Android devices can boot Flow under QEMU's `virt` machine without translating an x86_64 guest.
