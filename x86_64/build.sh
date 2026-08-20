@@ -4,6 +4,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD="${1:-$HERE/build}"
 FLOW="${FLOW:-$HERE/../../flow/flow}"
+FREESTANDING="$HERE/freestanding"
 
 if [[ ! -x "$FLOW" ]]; then
     echo "Flow compiler not found or not executable: $FLOW" >&2
@@ -18,20 +19,30 @@ mkdir -p "$BUILD"
     --export kernel_main kernel_abi_version kernel_page_size kernel_boot_magic_valid kernel_page_count \
     -o "$BUILD/kernel.c"
 
+COMMON_CFLAGS=(
+    -target x86_64-unknown-none-elf
+    -std=c11
+    -ffreestanding
+    -fno-builtin
+    -fno-stack-protector
+    -fno-pic
+    -fno-pie
+    -mno-red-zone
+    -ffunction-sections
+    -fdata-sections
+    -O2
+    -I "$FREESTANDING"
+)
+
 clang \
-    -target x86_64-unknown-none-elf \
-    -std=c11 \
-    -ffreestanding \
-    -fno-builtin \
-    -fno-stack-protector \
-    -fno-pic \
-    -fno-pie \
-    -mno-red-zone \
-    -ffunction-sections \
-    -fdata-sections \
-    -O2 \
+    "${COMMON_CFLAGS[@]}" \
     -c "$BUILD/kernel.c" \
     -o "$BUILD/kernel-flow.o"
+
+clang \
+    "${COMMON_CFLAGS[@]}" \
+    -c "$FREESTANDING/runtime.c" \
+    -o "$BUILD/freestanding-runtime.o"
 
 clang \
     -target x86_64-unknown-none-elf \
@@ -48,6 +59,7 @@ ld.lld \
     -T "$HERE/linker.ld" \
     "$BUILD/boot.o" \
     "$BUILD/kernel-flow.o" \
+    "$BUILD/freestanding-runtime.o" \
     -o "$BUILD/flow-kernel.elf"
 
 if command -v grub-file >/dev/null 2>&1; then
