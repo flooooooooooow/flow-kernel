@@ -41,6 +41,11 @@ clang \
 
 clang \
     "${COMMON_CFLAGS[@]}" \
+    -c "$HERE/arch.c" \
+    -o "$BUILD/arch.o"
+
+clang \
+    "${COMMON_CFLAGS[@]}" \
     -c "$FREESTANDING/runtime.c" \
     -o "$BUILD/freestanding-runtime.o"
 
@@ -59,6 +64,7 @@ ld.lld \
     -T "$HERE/linker.ld" \
     "$BUILD/boot.o" \
     "$BUILD/kernel-flow.o" \
+    "$BUILD/arch.o" \
     "$BUILD/freestanding-runtime.o" \
     -o "$BUILD/flow-kernel.elf"
 
