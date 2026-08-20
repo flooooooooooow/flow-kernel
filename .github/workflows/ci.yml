@@ -44,6 +44,11 @@ jobs:
             xorriso \
             qemu-system-x86
 
+      - name: Validate Android runner scripts
+        run: |
+          bash -n android/termux-run.sh
+          bash -n android/termux-setup.sh
+
       - name: Build freestanding x86_64 ELF
         env:
           FLOW: ${{ github.workspace }}/flow/flow
@@ -65,17 +70,12 @@ jobs:
           grub-mkrescue -o /tmp/flow-kernel.iso /tmp/flow-kernel-iso
           test -s /tmp/flow-kernel.iso
 
-      - name: Boot smoke under QEMU
+      - name: Boot smoke through Android-compatible runner
         run: |
           set +e
-          timeout 10s qemu-system-x86_64 \
-            -machine accel=tcg \
-            -m 128M \
-            -cdrom /tmp/flow-kernel.iso \
-            -serial file:/tmp/flow-kernel-serial.log \
-            -display none \
-            -no-reboot \
-            -no-shutdown
+          timeout 10s env FLOW_KERNEL_QEMU=qemu-system-x86_64 \
+            bash android/termux-run.sh /tmp/flow-kernel.iso \
+            > /tmp/flow-kernel-serial.log 2>&1
           rc=$?
           set -e
 
@@ -88,6 +88,17 @@ jobs:
           grep -F 'Flow kernel: entry' /tmp/flow-kernel-serial.log
           grep -F 'Flow kernel: boot contract accepted' /tmp/flow-kernel-serial.log
 
+      - name: Package Android boot artifact
+        run: |
+          package=/tmp/flow-kernel-android-x86_64
+          mkdir -p "$package"
+          cp /tmp/flow-kernel.iso "$package/flow-kernel.iso"
+          cp android/termux-run.sh "$package/termux-run.sh"
+          cp android/termux-setup.sh "$package/termux-setup.sh"
+          cp android/README.md "$package/README.md"
+          (cd "$package" && sha256sum flow-kernel.iso > SHA256SUMS)
+          cat "$package/SHA256SUMS"
+
       - name: Upload kernel artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -97,5 +108,14 @@ jobs:
             /tmp/flow-kernel-build/flow-kernel.elf
             /tmp/flow-kernel.iso
             /tmp/flow-kernel-serial.log
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload Android boot artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flow-kernel-android-x86_64
+          path: /tmp/flow-kernel-android-x86_64/
           if-no-files-found: warn
           retention-days: 7
