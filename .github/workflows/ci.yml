@@ -68,8 +68,8 @@ jobs:
           bash x86_64/build.sh /tmp/flow-kernel-build
           test -s /tmp/flow-kernel-build/flow-kernel.elf
           grub-file --is-x86-multiboot2 /tmp/flow-kernel-build/flow-kernel.elf
-          llvm-readelf -h /tmp/flow-kernel-build/flow-kernel.elf
-          llvm-nm /tmp/flow-kernel-build/flow-kernel.elf | grep -F 'flow_export_kernel_main'
+          readelf -h /tmp/flow-kernel-build/flow-kernel.elf
+          nm /tmp/flow-kernel-build/flow-kernel.elf | grep -F 'flow_export_kernel_main'
 
       - name: Build bootable GRUB image
         run: |
