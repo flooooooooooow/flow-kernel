@@ -50,6 +50,7 @@ jobs:
             lld \
             grub-common \
             grub-pc-bin \
+            mtools \
             xorriso \
             qemu-system-x86
 
