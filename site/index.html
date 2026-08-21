@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Flow Kernel — a tiny Linux substrate for Flow systems programming, built on Tiny Core CorePure64 with eBPF as the kernel-facing target.">
+  <title>Flow Kernel</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="noise"></div>
+  <header class="shell">
+    <nav class="nav">
+      <a class="brand" href="#top" aria-label="Flow Kernel home">
+        <span class="brand-mark">F</span>
+        <span>flow-kernel</span>
+      </a>
+      <div class="nav-links">
+        <a href="#architecture">Architecture</a>
+        <a href="#ebpf">eBPF</a>
+        <a href="#boot">Boot</a>
+        <a class="pill" href="https://github.com/flooooooooooow/flow-kernel">GitHub ↗</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero shell">
+      <div class="eyebrow">FLOW × LINUX × TINY CORE</div>
+      <h1>A tiny operating base for <span>systems written in Flow.</span></h1>
+      <p class="lede">Linux does the commodity kernel work. Tiny Core keeps the machine small. Flow targets the parts worth reinventing: kernel-facing services, tracing, networking, and eBPF.</p>
+      <div class="hero-actions">
+        <a class="button primary" href="#boot">Boot CorePure64</a>
+        <a class="button ghost" href="https://github.com/flooooooooooow/flow">Explore Flow ↗</a>
+      </div>
+
+      <div class="terminal" aria-label="Flow Kernel architecture terminal">
+        <div class="terminal-bar">
+          <div class="dots"><i></i><i></i><i></i></div>
+          <span>flow-kernel / architecture</span>
+        </div>
+        <pre><code><span class="muted">$</span> flow-kernel --stack
+
+<span class="bright">Linux kernel</span>
+    ↑
+<span class="bright">Tiny Core CorePure64</span>
+    ↑
+<span class="accent">Flow systems layer</span>
+    ├── eBPF / BTF / CO-RE
+    ├── XDP / TC
+    ├── tracing / kprobes
+    └── tiny user-space services</code></pre>
+      </div>
+    </section>
+
+    <section class="strip">
+      <div class="shell stats">
+        <div><strong>Linux-native</strong><span>No custom bootloader or scheduler</span></div>
+        <div><strong>CorePure64</strong><span>Minimal 64-bit Tiny Core base</span></div>
+        <div><strong>eBPF-first</strong><span>Kernel-facing Flow target</span></div>
+        <div><strong>Separate compiler</strong><span>Flow remains its own project</span></div>
+      </div>
+    </section>
+
+    <section id="architecture" class="section shell">
+      <div class="section-heading">
+        <span>01 / ARCHITECTURE</span>
+        <h2>Keep the kernel mature.<br>Make the systems layer new.</h2>
+      </div>
+
+      <div class="architecture-grid">
+        <article class="layer linux">
+          <div class="layer-index">04</div>
+          <h3>Linux kernel</h3>
+          <p>Memory management, scheduling, drivers, networking, namespaces, cgroups, perf and the verifier already exist here.</p>
+        </article>
+        <article class="layer tiny">
+          <div class="layer-index">03</div>
+          <h3>Tiny Core</h3>
+          <p>CorePure64 provides a deliberately small command-line userspace without turning the project into another general-purpose distro.</p>
+        </article>
+        <article class="layer flow">
+          <div class="layer-index">02</div>
+          <h3>Flow systems</h3>
+          <p>Small Linux-facing services and tooling compiled from Flow, with the language and compiler remaining independently versioned.</p>
+        </article>
+        <article class="layer ebpf">
+          <div class="layer-index">01</div>
+          <h3>Flow eBPF</h3>
+          <p>Verifier-safe programs, BTF-aware bindings, maps, tracing hooks, XDP and TC form the first serious kernel-facing target.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="ebpf" class="section dark-section">
+      <div class="shell split">
+        <div class="section-heading compact">
+          <span>02 / EBPF</span>
+          <h2>Don’t rebuild Linux.<br>Program it.</h2>
+          <p>Flow’s kernel work starts where Linux exposes stable, optimisable attachment points.</p>
+        </div>
+        <div class="roadmap">
+          <div class="roadmap-item active"><span>01</span><div><strong>Backend</strong><p>Lower a verifier-safe Flow subset to eBPF.</p></div></div>
+          <div class="roadmap-item"><span>02</span><div><strong>BTF + helpers</strong><p>Typed Linux bindings, helper declarations and map primitives.</p></div></div>
+          <div class="roadmap-item"><span>03</span><div><strong>Observability</strong><p>Tracepoints, kprobes and perf/ring-buffer event transport.</p></div></div>
+          <div class="roadmap-item"><span>04</span><div><strong>Networking</strong><p>XDP and TC hooks for low-latency packet programs.</p></div></div>
+          <div class="roadmap-item"><span>05</span><div><strong>Portable programs</strong><p>CO-RE-style relocation against kernel BTF.</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="boot" class="section shell">
+      <div class="section-heading">
+        <span>03 / BOOT</span>
+        <h2>Two commands to the base system.</h2>
+      </div>
+
+      <div class="code-grid">
+        <div class="code-card">
+          <span class="code-label">FETCH</span>
+          <pre><code>git clone https://github.com/flooooooooooow/flow-kernel.git
+cd flow-kernel
+bash tinycore/fetch.sh</code></pre>
+          <p>Fetches the pinned Tiny Core CorePure64 kernel and initramfs into <code>build/tinycore/</code>.</p>
+        </div>
+        <div class="code-card">
+          <span class="code-label">RUN</span>
+          <pre><code>bash tinycore/run.sh</code></pre>
+          <p>Boots <code>vmlinuz64</code> and <code>corepure64.gz</code> directly under QEMU with a serial console.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="manifesto">
+      <div class="shell">
+        <p class="quote">“The base should be boring.<br><span>The layer above it shouldn’t be.</span>”</p>
+        <p class="subquote">Flow Kernel uses Linux for solved systems problems and reserves experimentation for the interfaces where Flow can change the economics of systems programming.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="shell footer">
+    <div class="brand footer-brand"><span class="brand-mark">F</span><span>flow-kernel</span></div>
+    <p>Flow systems work on a Tiny Core Linux base.</p>
+    <a href="https://github.com/flooooooooooow/flow-kernel">Source ↗</a>
+  </footer>
+</body>
+</html>

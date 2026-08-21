@@ -1,0 +1,53 @@
+{
+  "schema": 2,
+  "baseline": {
+    "source_run": 32044879323,
+    "source_commit": "72ac38844223db3ac9f9c9aa0894d4203b368be6",
+    "tinycore_version": "17.1",
+    "kernel_release": "6.18.35-tinycore64",
+    "profile": "qemu-tcg-x86_64-256m"
+  },
+  "ok": true,
+  "health": "degraded",
+  "last_good_stage": "complete",
+  "total_time_ms": 3740,
+  "evidence": {
+    "kernel_release": "6.18.35-tinycore64",
+    "cpu_count": "1",
+    "mem_total_kb": "236212",
+    "uptime_seconds": "3",
+    "entropy_available": "256",
+    "block_devices": "ram0,ram1,ram2,ram3,ram4,ram5,ram6,ram7,sr0,zram0",
+    "net_interfaces": "dummy0,lo,tunl0",
+    "dns_configured": "false",
+    "cgroup_capable": "true",
+    "bpf_capable": "true"
+  },
+  "stages": [
+    {"id":"kernel","severity":"required","status":"OK","ok":true,"degraded":false,"time_ms":null},
+    {"id":"initramfs","severity":"required","status":"OK","ok":true,"degraded":false,"time_ms":null},
+    {"id":"pid1","severity":"required","status":"OK","ok":true,"degraded":false,"time_ms":0},
+    {"id":"procfs","severity":"required","status":"OK","ok":true,"degraded":false,"time_ms":1730},
+    {"id":"sysfs","severity":"required","status":"OK","ok":true,"degraded":false,"time_ms":1770},
+    {"id":"devices","severity":"required","status":"OK","ok":true,"degraded":false,"time_ms":1800},
+    {"id":"write","severity":"required","status":"OK","ok":true,"degraded":false,"time_ms":1850},
+    {"id":"cpu","severity":"required","status":"OK","ok":true,"degraded":false,"time_ms":1900},
+    {"id":"memory","severity":"required","status":"OK","ok":true,"degraded":false,"time_ms":1940},
+    {"id":"clock","severity":"required","status":"OK","ok":true,"degraded":false,"time_ms":3020},
+    {"id":"rng","severity":"required","status":"OK","ok":true,"degraded":false,"time_ms":3120},
+    {"id":"process","severity":"required","status":"OK","ok":true,"degraded":false,"time_ms":3150},
+    {"id":"signal","severity":"required","status":"OK","ok":true,"degraded":false,"time_ms":3170},
+    {"id":"pipe","severity":"required","status":"OK","ok":true,"degraded":false,"time_ms":3220},
+    {"id":"filesystem","severity":"required","status":"OK","ok":true,"degraded":false,"time_ms":3350},
+    {"id":"block","severity":"advisory","status":"OK","ok":true,"degraded":false,"time_ms":3440},
+    {"id":"network","severity":"required","status":"OK","ok":true,"degraded":false,"time_ms":3520},
+    {"id":"dns","severity":"advisory","status":"WARN","ok":true,"degraded":true,"time_ms":3560},
+    {"id":"namespace","severity":"required","status":"OK","ok":true,"degraded":false,"time_ms":3580},
+    {"id":"cgroup","severity":"advisory","status":"OK","ok":true,"degraded":false,"time_ms":3630},
+    {"id":"bpf","severity":"required","status":"OK","ok":true,"degraded":false,"time_ms":3670},
+    {"id":"flow","severity":"required","status":"OK","ok":true,"degraded":false,"time_ms":3700},
+    {"id":"complete","severity":"required","status":"OK","ok":true,"degraded":false,"time_ms":3720}
+  ],
+  "degraded": ["advisory stage degraded: dns"],
+  "failures": []
+}

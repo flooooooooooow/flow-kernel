@@ -1,0 +1,25 @@
+name: Diagnostics Unit Tests
+
+on:
+  push:
+    paths:
+      - 'diagnostics/**'
+      - '.github/workflows/diagnostics.yml'
+  pull_request:
+    paths:
+      - 'diagnostics/**'
+      - '.github/workflows/diagnostics.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Compile diagnostics tooling
+        run: python3 -m py_compile diagnostics/check_boot.py diagnostics/compare_health.py diagnostics/test_health.py
+      - name: Validate health protocol
+        run: python3 -m unittest diagnostics.test_health -v

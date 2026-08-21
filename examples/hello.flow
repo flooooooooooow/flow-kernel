@@ -1,0 +1,17 @@
+# Minimal Flow userspace service for Tiny Core CorePure64.
+#
+# The architecture-specific syscall instruction lives in examples/syscall.c;
+# Flow owns the service logic and the stable extern boundary.
+
+extern {
+    function flow_hello_write(data: string, count: u64) -> i64
+}
+
+export function hello_main() -> i32 {
+    let message = "Flow on Tiny Core: hello from a libc-free process\n"
+    let result = flow_hello_write(message, 50)
+    if result < 0 {
+        return 1
+    }
+    return 0
+}
